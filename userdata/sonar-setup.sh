@@ -1,23 +1,28 @@
 #!/bin/bash
-cp /etc/sysctl.conf /root/sysctl.conf_backup
-cat <<EOT> /etc/sysctl.conf
+
+sudo cp /etc/sysctl.conf /root/sysctl.conf_backup
+sudo bash -c 'cat << EOT > /etc/sysctl.conf
 vm.max_map_count=262144
 fs.file-max=65536
 ulimit -n 65536
 ulimit -u 4096
-EOT
-cp /etc/security/limits.conf /root/sec_limit.conf_backup
-cat <<EOT> /etc/security/limits.conf
+EOT'
+
+sudo cp /etc/security/limits.conf /root/sec_limit.conf_backup
+sudo bash -c 'cat << EOT > /etc/security/limits.conf
 sonarqube   -   nofile   65536
 sonarqube   -   nproc    409
-EOT
+EOT'
 
+#INSTALL JAVA 11
 sudo apt-get update -y
 sudo apt-get install openjdk-11-jdk -y
 sudo update-alternatives --config java
 
 java -version
 
+
+#INSTALL POSTGRES
 sudo apt update
 wget -q https://www.postgresql.org/media/keys/ACCC4CF8.asc -O - | sudo apt-key add -
 
@@ -26,14 +31,17 @@ sudo apt install postgresql postgresql-contrib -y
 #sudo -u postgres psql -c "SELECT version();"
 sudo systemctl enable postgresql.service
 sudo systemctl start  postgresql.service
-sudo echo "postgres:admin123" | chpasswd
-runuser -l postgres -c "createuser sonar"
+sudo echo "postgres:admin123" | chpasswd                              #change password??
+sudo runuser -l postgres -c "createuser sonar"            #run the command "create sonar" as postgres user in linux
 sudo -i -u postgres psql -c "ALTER USER sonar WITH ENCRYPTED PASSWORD 'admin123';"
 sudo -i -u postgres psql -c "CREATE DATABASE sonarqube OWNER sonar;"
 sudo -i -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE sonarqube to sonar;"
-systemctl restart  postgresql
+sudo systemctl restart  postgresql
 #systemctl status -l   postgresql
-netstat -tulpena | grep postgres
+sudo ss -tulpena | grep postgres
+
+
+#INSTALL SONARQUBE
 sudo mkdir -p /sonarqube/
 cd /sonarqube/
 sudo curl -O https://binaries.sonarsource.com/Distribution/sonarqube/sonarqube-8.3.0.34182.zip
@@ -43,8 +51,8 @@ sudo mv /opt/sonarqube-8.3.0.34182/ /opt/sonarqube
 sudo groupadd sonar
 sudo useradd -c "SonarQube - User" -d /opt/sonarqube/ -g sonar sonar
 sudo chown sonar:sonar /opt/sonarqube/ -R
-cp /opt/sonarqube/conf/sonar.properties /root/sonar.properties_backup
-cat <<EOT> /opt/sonarqube/conf/sonar.properties
+sudo cp /opt/sonarqube/conf/sonar.properties /root/sonar.properties_backup
+sudo bash -c 'cat << EOT > /opt/sonarqube/conf/sonar.properties
 sonar.jdbc.username=sonar
 sonar.jdbc.password=admin123
 sonar.jdbc.url=jdbc:postgresql://localhost/sonarqube
@@ -54,9 +62,9 @@ sonar.web.javaAdditionalOpts=-server
 sonar.search.javaOpts=-Xmx512m -Xms512m -XX:+HeapDumpOnOutOfMemoryError
 sonar.log.level=INFO
 sonar.path.logs=logs
-EOT
+EOT'
 
-cat <<EOT> /etc/systemd/system/sonarqube.service
+sudo bash -c 'cat << EOT > /etc/systemd/system/sonarqube.service
 [Unit]
 Description=SonarQube service
 After=syslog.target network.target
@@ -77,16 +85,17 @@ LimitNPROC=4096
 
 [Install]
 WantedBy=multi-user.target
-EOT
+EOT'
 
-systemctl daemon-reload
-systemctl enable sonarqube.service
+sudo systemctl daemon-reload
+sudo systemctl enable sonarqube.service
 #systemctl start sonarqube.service
 #systemctl status -l sonarqube.service
-apt-get install nginx -y
-rm -rf /etc/nginx/sites-enabled/default
-rm -rf /etc/nginx/sites-available/default
-cat <<EOT> /etc/nginx/sites-available/sonarqube
+sudo apt-get install nginx -y
+sudo rm -rf /etc/nginx/sites-enabled/default
+sudo rm -rf /etc/nginx/sites-available/default
+sudo rm /etc/nginx/conf.d/default.conf
+sudo bash -c 'cat << EOT > /etc/nginx/conf.d/default.conf
 server{
     listen      80;
     server_name sonarqube.groophy.in;
@@ -108,12 +117,13 @@ server{
         proxy_set_header    X-Forwarded-Proto http;
     }
 }
-EOT
-ln -s /etc/nginx/sites-available/sonarqube /etc/nginx/sites-enabled/sonarqube
-systemctl enable nginx.service
+EOT'
+
+#sudo ln -s /etc/nginx/sites-available/sonarqube /etc/nginx/sites-enabled/sonarqube
+sudo systemctl enable nginx
 #systemctl restart nginx.service
-sudo ufw allow 80,9000,9001/tcp
+#sudo ufw allow 80,9000,9001/tcp
 
 echo "System reboot in 30 sec"
-sleep 30
-reboot
+sudo sleep 30
+sudo reboot
