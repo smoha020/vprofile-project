@@ -44,7 +44,7 @@ sudo ss -tulpena | grep postgres
 #INSTALL SONARQUBE
 sudo mkdir -p /sonarqube/
 cd /sonarqube/
-sudo curl -O https://binaries.sonarsource.com/Distribution/sonarqube/sonarqube-8.3.0.34182.zip
+sudo curl -O https://binaries.sonarsource.com/Distribution/sonarqube/sonarqube-8.9.9.56886.zip
 sudo apt-get install zip -y
 sudo unzip -o sonarqube-8.3.0.34182.zip -d /opt/
 sudo mv /opt/sonarqube-8.3.0.34182/ /opt/sonarqube
